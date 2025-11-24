@@ -1,0 +1,54 @@
+const express = require("express");
+const { check } = require("express-validator");
+const accountController = require("../controllers/accountController");
+const auth = require("../middleware/auth");
+
+const router = express.Router();
+
+// Apply auth middleware to all routes
+router.use(auth.protect);
+
+// @route   GET /api/account/balance
+// @desc    Get account balance
+// @access  Private
+router.get("/balance", accountController.getBalance);
+
+// @route   POST /api/account/deposit
+// @desc    Deposit money
+// @access  Private
+router.post(
+  "/deposit",
+  [check("amount", "Please enter a valid amount").isFloat({ min: 0.01 })],
+  accountController.deposit
+);
+
+// @route   POST /api/account/withdraw
+// @desc    Withdraw money
+// @access  Private
+router.post(
+  "/withdraw",
+  [check("amount", "Please enter a valid amount").isFloat({ min: 0.01 })],
+  accountController.withdraw
+);
+
+// @route   POST /api/account/transfer
+// @desc    Transfer money to another account
+// @access  Private
+router.post(
+  "/transfer",
+  [
+    check("amount", "Please enter a valid amount").isFloat({ min: 0.01 }),
+    check(
+      "recipientAccountNumber",
+      "Recipient account number is required"
+    ).notEmpty(),
+  ],
+  accountController.transfer
+);
+
+// @route   GET /api/account/transactions
+// @desc    Get transaction history
+// @access  Private
+router.get("/transactions", accountController.getTransactions);
+
+module.exports = router;
