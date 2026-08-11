@@ -27,7 +27,6 @@ ATM/
 │   ├── middleware/           # protection JWT
 │   ├── models/               # schémas Mongoose (User, Account)
 │   ├── routes/               # routes Express
-│   ├── public/               # ancienne démo vanilla (conservée, servie sur /)
 │   ├── server.js             # point d'entrée
 │   └── test-api.js           # 36 tests API de bout en bout
 └── frontend/                 # application React (Vite + MUI)
@@ -116,7 +115,7 @@ npm start                  # l'API sert alors aussi l'app React sur http://local
 | Méthode | Route | Description |
 |---|---|---|
 | GET | `/api/health` | État du serveur et de la connexion MongoDB |
-| GET | `/` | Ancienne démo vanilla (conservée, interface historique en anglais) |
+| GET | `/` | Application React (en mode production, si `frontend/dist` existe) |
 
 ## 🔑 Variables d'environnement (`backend/.env`)
 

@@ -19,10 +19,6 @@ const transactionSchema = new mongoose.Schema({
   balanceAfter: {
     type: Number,
     required: true,
-  },
-  relatedAccount: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Account'
   }
 });
 

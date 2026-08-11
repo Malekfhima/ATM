@@ -4,7 +4,6 @@ const fs = require("fs");
 const express = require("express");
 const mongoose = require("mongoose");
 const cors = require("cors");
-const bodyParser = require("body-parser");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const authRoutes = require("./routes/auth");
@@ -19,7 +18,7 @@ app.use(
     origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
   })
 );
-app.use(bodyParser.json());
+app.use(express.json());
 
 // Simple request logger
 app.use((req, res, next) => {
@@ -42,9 +41,6 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 });
 app.use("/api/auth", authLimiter);
-
-// --- Static frontend (vanilla demo app) ---
-app.use(express.static(path.join(__dirname, "public")));
 
 // --- Database connection ---
 const MONGODB_URI = process.env.MONGODB_URI || "mongodb://127.0.0.1:27017/atm";
