@@ -90,6 +90,39 @@
   animation: gradientShift 9s ease infinite;
 }
 
+/* Barre de défilement personnalisée */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #c3d2e5;
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9fb8d6;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+/* Couleur de sélection */
+::selection {
+  background: rgba(31, 92, 173, 0.25);
+}
+
+/* Cartes KPI : icône flottante au survol */
+.kpi-card .kpi-icon {
+  transition: transform 0.3s ease;
+}
+.kpi-card:hover .kpi-icon {
+  transform: scale(1.12) rotate(-4deg);
+}
+
 /* Réduction des animations si l'utilisateur le demande */
 @media (prefers-reduced-motion: reduce) {
   *,

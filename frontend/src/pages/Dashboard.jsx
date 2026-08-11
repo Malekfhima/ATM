@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   Alert,
+  Avatar,
   Box,
   Button,
   Card,
@@ -11,6 +13,7 @@ import {
   InputAdornment,
   Paper,
   Snackbar,
+  Stack,
   Tab,
   Tabs,
   TextField,
@@ -23,16 +26,20 @@ import ArrowDownwardIcon from "@mui/icons-material/ArrowDownward";
 import ArrowUpwardIcon from "@mui/icons-material/ArrowUpward";
 import SwapHorizIcon from "@mui/icons-material/SwapHoriz";
 import ContentCopyIcon from "@mui/icons-material/ContentCopy";
+import AddCircleIcon from "@mui/icons-material/AddCircle";
+import RemoveCircleIcon from "@mui/icons-material/RemoveCircle";
+import ReceiptLongIcon from "@mui/icons-material/ReceiptLong";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import api from "../api/client";
 import { useAuth } from "../context/AuthContext";
-import { formatCurrency } from "../utils/format";
+import { formatCurrency, formatDate, getInitials } from "../utils/format";
 import useCountUp from "../hooks/useCountUp";
 import AccountCharts from "../components/AccountCharts";
 
 const TABS = [
-  { value: "deposit", label: "Dépôt", icon: <ArrowDownwardIcon /> },
-  { value: "withdraw", label: "Retrait", icon: <ArrowUpwardIcon /> },
-  { value: "transfer", label: "Virement", icon: <SwapHorizIcon /> },
+  { value: "deposit", label: "Dépôt", icon: <ArrowDownwardIcon fontSize="small" /> },
+  { value: "withdraw", label: "Retrait", icon: <ArrowUpwardIcon fontSize="small" /> },
+  { value: "transfer", label: "Virement", icon: <SwapHorizIcon fontSize="small" /> },
 ];
 
 const CONFIRM_LABELS = {
@@ -41,8 +48,15 @@ const CONFIRM_LABELS = {
   transfer: "virement",
 };
 
+const OP_META = {
+  deposit: { icon: <ArrowDownwardIcon fontSize="small" />, color: "#10b981" },
+  withdrawal: { icon: <ArrowUpwardIcon fontSize="small" />, color: "#e11d48" },
+  transfer: { icon: <SwapHorizIcon fontSize="small" />, color: "#1f5cad" },
+};
+
 export default function Dashboard() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [balance, setBalance] = useState(null);
   const [transactions, setTransactions] = useState([]);
   const [refreshing, setRefreshing] = useState(false);
@@ -54,6 +68,27 @@ export default function Dashboard() {
   const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
 
   const animatedBalance = useCountUp(balance ?? 0, 900);
+
+  const stats = useMemo(() => {
+    let deposited = 0;
+    let withdrawn = 0;
+    transactions.forEach((t) => {
+      if (t.type === "deposit") deposited += t.amount;
+      else withdrawn += t.amount;
+    });
+    return { deposited, withdrawn, count: transactions.length };
+  }, [transactions]);
+
+  const animatedDeposited = useCountUp(stats.deposited, 1100);
+  const animatedWithdrawn = useCountUp(stats.withdrawn, 1100);
+
+  const recentOps = useMemo(
+    () =>
+      [...transactions]
+        .sort((a, b) => new Date(b.date) - new Date(a.date))
+        .slice(0, 5),
+    [transactions]
+  );
 
   const loadBalance = useCallback(async () => {
     setRefreshing(true);
@@ -76,7 +111,6 @@ export default function Dashboard() {
       const { data } = await api.get("/account/transactions?limit=100");
       setTransactions(data);
     } catch (err) {
-      // L'historique est accessoire sur le tableau de bord : pas de blocage
       console.error("Erreur de chargement de l'historique :", err);
     }
   }, []);
@@ -136,7 +170,7 @@ export default function Dashboard() {
   return (
     <Box>
       <Grid container spacing={3}>
-        {/* Carte solde */}
+        {/* Carte solde (style carte bancaire) */}
         <Grid item xs={12} md={4}>
           <Paper
             elevation={0}
@@ -149,20 +183,48 @@ export default function Dashboard() {
                 "linear-gradient(135deg, #0a2a55 0%, #0f3d7a 45%, #1f5cad 100%)",
               position: "relative",
               overflow: "hidden",
+              minHeight: 300,
+              display: "flex",
+              flexDirection: "column",
             }}
           >
+            {/* Décor de carte */}
             <Box
               sx={{
                 position: "absolute",
-                right: -40,
-                top: -40,
-                width: 180,
-                height: 180,
+                right: -60,
+                top: -60,
+                width: 220,
+                height: 220,
                 borderRadius: "50%",
-                background: "rgba(255,255,255,0.08)",
+                border: "1.5px solid rgba(255,255,255,0.14)",
               }}
             />
-            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2 }}>
+            <Box
+              sx={{
+                position: "absolute",
+                right: -20,
+                top: -20,
+                width: 150,
+                height: 150,
+                borderRadius: "50%",
+                background: "rgba(255,255,255,0.07)",
+              }}
+            />
+            <Box
+              sx={{
+                position: "absolute",
+                bottom: -50,
+                left: -40,
+                width: 170,
+                height: 170,
+                borderRadius: "50%",
+                background: "rgba(245, 179, 1, 0.12)",
+              }}
+            />
+
+            {/* En-tête carte */}
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1, mb: 2, position: "relative" }}>
               <AccountBalanceWalletIcon />
               <Typography variant="subtitle1" sx={{ opacity: 0.9 }}>
                 Solde actuel
@@ -184,17 +246,32 @@ export default function Dashboard() {
               </Tooltip>
             </Box>
 
-            <Typography variant="h4" sx={{ fontWeight: 800, mb: 2 }}>
+            {/* Solde */}
+            <Typography
+              variant="h4"
+              sx={{
+                fontWeight: 800,
+                mb: 0.5,
+                fontVariantNumeric: "tabular-nums",
+                letterSpacing: "-0.01em",
+                position: "relative",
+              }}
+            >
               {balance === null ? "—" : formatCurrency(animatedBalance)}
             </Typography>
+            <Typography
+              variant="caption"
+              sx={{ opacity: 0.75, letterSpacing: 1.2, textTransform: "uppercase", mb: 2.5 }}
+            >
+              Dinar tunisien · TND
+            </Typography>
 
+            {/* Numéro de compte */}
             <Chip
               label={user?.account?.accountNumber || "Aucun compte"}
               size="small"
               icon={
-                <ContentCopyIcon
-                  sx={{ fontSize: 14, color: "white !important" }}
-                />
+                <ContentCopyIcon sx={{ fontSize: 14, color: "white !important" }} />
               }
               onClick={copyAccountNumber}
               sx={{
@@ -202,23 +279,71 @@ export default function Dashboard() {
                 color: "white",
                 cursor: "pointer",
                 fontFamily: "'Roboto Mono', monospace",
-                "& .MuiChip-label": { letterSpacing: 0.5 },
+                letterSpacing: 1,
+                alignSelf: "flex-start",
               }}
             />
+
+            {/* Actions rapides */}
+            <Stack direction="row" spacing={1} sx={{ mt: "auto", pt: 3, position: "relative" }}>
+              {TABS.map((t) => (
+                <Button
+                  key={t.value}
+                  size="small"
+                  variant="contained"
+                  disableElevation
+                  startIcon={t.icon}
+                  onClick={() => {
+                    setTab(t.value);
+                    setFormError("");
+                  }}
+                  sx={{
+                    flex: 1,
+                    bgcolor: "rgba(255,255,255,0.16)",
+                    color: "white",
+                    py: 0.8,
+                    borderRadius: 2,
+                    "&:hover": {
+                      bgcolor: "rgba(255,255,255,0.28)",
+                      transform: "translateY(-2px)",
+                    },
+                  }}
+                >
+                  {t.label}
+                </Button>
+              ))}
+            </Stack>
           </Paper>
 
+          {/* Utilisateur */}
           <Card
             className="card-lift anim-fade-up anim-delay-1"
-            sx={{ mt: 3, p: 3, borderRadius: 4 }}
+            sx={{ mt: 3, p: 2.5, borderRadius: 4 }}
             elevation={0}
           >
-            <Typography variant="subtitle2" color="text.secondary" gutterBottom>
-              Connecté en tant que
-            </Typography>
-            <Typography variant="h6">{user?.name}</Typography>
-            <Typography variant="body2" color="text.secondary">
-              {user?.email}
-            </Typography>
+            <Box sx={{ display: "flex", alignItems: "center", gap: 2 }}>
+              <Avatar
+                sx={{
+                  bgcolor: "primary.main",
+                  fontWeight: 700,
+                  width: 46,
+                  height: 46,
+                }}
+              >
+                {getInitials(user?.name)}
+              </Avatar>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography variant="subtitle2" color="text.secondary">
+                  Connecté en tant que
+                </Typography>
+                <Typography variant="subtitle1" noWrap sx={{ fontWeight: 700 }}>
+                  {user?.name}
+                </Typography>
+                <Typography variant="caption" color="text.secondary" noWrap>
+                  {user?.email}
+                </Typography>
+              </Box>
+            </Box>
           </Card>
         </Grid>
 
@@ -227,7 +352,7 @@ export default function Dashboard() {
           <Paper
             elevation={0}
             className="anim-fade-up anim-delay-1"
-            sx={{ borderRadius: 4, p: { xs: 2, sm: 3 } }}
+            sx={{ borderRadius: 4, p: { xs: 2, sm: 3 }, height: "100%" }}
           >
             <Tabs
               value={tab}
@@ -309,10 +434,193 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
+      {/* Indicateurs */}
+      <Grid container spacing={3} sx={{ mt: 1 }}>
+        <Grid item xs={12} sm={4}>
+          <Paper
+            elevation={0}
+            className="kpi-card card-lift anim-fade-up anim-delay-1"
+            sx={{ p: 2.5, borderRadius: 4, display: "flex", alignItems: "center", gap: 2 }}
+          >
+            <Box
+              className="kpi-icon"
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: 2.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "rgba(16, 185, 129, 0.12)",
+                color: "#10b981",
+              }}
+            >
+              <AddCircleIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                Total déposé
+              </Typography>
+              <Typography variant="h6" sx={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatCurrency(animatedDeposited)}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Paper
+            elevation={0}
+            className="kpi-card card-lift anim-fade-up anim-delay-2"
+            sx={{ p: 2.5, borderRadius: 4, display: "flex", alignItems: "center", gap: 2 }}
+          >
+            <Box
+              className="kpi-icon"
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: 2.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "rgba(225, 29, 72, 0.10)",
+                color: "#e11d48",
+              }}
+            >
+              <RemoveCircleIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                Total retiré
+              </Typography>
+              <Typography variant="h6" sx={{ fontVariantNumeric: "tabular-nums" }}>
+                {formatCurrency(animatedWithdrawn)}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+        <Grid item xs={12} sm={4}>
+          <Paper
+            elevation={0}
+            className="kpi-card card-lift anim-fade-up anim-delay-3"
+            sx={{ p: 2.5, borderRadius: 4, display: "flex", alignItems: "center", gap: 2 }}
+          >
+            <Box
+              className="kpi-icon"
+              sx={{
+                width: 46,
+                height: 46,
+                borderRadius: 2.5,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                bgcolor: "rgba(31, 92, 173, 0.12)",
+                color: "#1f5cad",
+              }}
+            >
+              <ReceiptLongIcon />
+            </Box>
+            <Box sx={{ minWidth: 0 }}>
+              <Typography variant="caption" color="text.secondary" noWrap>
+                Opérations
+              </Typography>
+              <Typography variant="h6" sx={{ fontVariantNumeric: "tabular-nums" }}>
+                {stats.count}
+              </Typography>
+            </Box>
+          </Paper>
+        </Grid>
+      </Grid>
+
       {/* Graphiques */}
       <Box sx={{ mt: 4 }}>
         <AccountCharts transactions={transactions} />
       </Box>
+
+      {/* Dernières opérations */}
+      {recentOps.length > 0 && (
+        <Paper
+          elevation={0}
+          className="anim-fade-up anim-delay-2"
+          sx={{ borderRadius: 4, mt: 4, overflow: "hidden" }}
+        >
+          <Box
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1.5,
+              px: 3,
+              py: 2.5,
+              borderBottom: "1px solid #e2e8f0",
+            }}
+          >
+            <ReceiptLongIcon color="primary" />
+            <Typography variant="h6" sx={{ flexGrow: 1 }}>
+              Dernières opérations
+            </Typography>
+            <Button
+              size="small"
+              onClick={() => navigate("/transactions")}
+              endIcon={<ChevronRightIcon />}
+            >
+              Voir tout
+            </Button>
+          </Box>
+          <Box>
+            {recentOps.map((t, i) => (
+              <Box
+                key={t._id}
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 2,
+                  px: 3,
+                  py: 1.8,
+                  borderBottom: i < recentOps.length - 1 ? "1px solid #f1f5f9" : "none",
+                  animation: "fadeInUp 0.4s ease both",
+                  animationDelay: `${Math.min(i * 60, 300)}ms`,
+                  "&:hover": { bgcolor: "#f8fafc" },
+                }}
+              >
+                <Box
+                  sx={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 2,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    bgcolor: `${OP_META[t.type]?.color || "#94a3b8"}1a`,
+                    color: OP_META[t.type]?.color || "#94a3b8",
+                    flexShrink: 0,
+                  }}
+                >
+                  {OP_META[t.type]?.icon}
+                </Box>
+                <Box sx={{ minWidth: 0, flexGrow: 1 }}>
+                  <Typography variant="body2" noWrap sx={{ fontWeight: 600 }}>
+                    {t.description || "Opération"}
+                  </Typography>
+                  <Typography variant="caption" color="text.secondary">
+                    {formatDate(t.date)}
+                  </Typography>
+                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontWeight: 700,
+                    fontVariantNumeric: "tabular-nums",
+                    color: t.type === "deposit" ? "#10b981" : "#e11d48",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {t.type === "deposit" ? "+" : "−"}
+                  {formatCurrency(t.amount).replace("-", "")}
+                </Typography>
+              </Box>
+            ))}
+          </Box>
+        </Paper>
+      )}
 
       <Snackbar
         open={toast.open}

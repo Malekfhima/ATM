@@ -12,3 +12,13 @@ export const formatDate = (value) =>
     dateStyle: "medium",
     timeStyle: "short",
   });
+
+// Initiales d'un nom (ex. "Jean Dupont" → "JD")
+export const getInitials = (name = "") =>
+  name
+    .split(" ")
+    .map((w) => w[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();

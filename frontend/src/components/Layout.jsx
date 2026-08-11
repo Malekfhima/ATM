@@ -1,6 +1,7 @@
 import { Outlet, useNavigate, useLocation } from "react-router-dom";
 import {
   AppBar,
+  Avatar,
   Box,
   Button,
   Container,
@@ -12,6 +13,7 @@ import {
 import AccountBalanceIcon from "@mui/icons-material/AccountBalance";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { useAuth } from "../context/AuthContext";
+import { getInitials } from "../utils/format";
 
 const navItems = [
   { label: "Tableau de bord", path: "/" },
@@ -48,8 +50,21 @@ export default function Layout() {
         }}
       >
         <Toolbar sx={{ gap: 1 }}>
-          <AccountBalanceIcon sx={{ fontSize: 30 }} />
-          <Typography variant="h6" sx={{ mr: 3 }}>
+          <Box
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: 2,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              bgcolor: "rgba(255,255,255,0.14)",
+              color: "#f5b301",
+            }}
+          >
+            <AccountBalanceIcon />
+          </Box>
+          <Typography variant="h6" sx={{ mr: 3, letterSpacing: "-0.01em" }}>
             Ma Banque
           </Typography>
 
@@ -83,7 +98,9 @@ export default function Layout() {
               color: "white",
             }}
           >
-            <Box sx={{ display: { xs: "none", sm: "block" }, textAlign: "right" }}>
+            <Box
+              sx={{ display: { xs: "none", sm: "block" }, textAlign: "right" }}
+            >
               <Typography variant="subtitle2" sx={{ lineHeight: 1.2 }}>
                 {user?.name}
               </Typography>
@@ -91,6 +108,18 @@ export default function Layout() {
                 {user?.account?.accountNumber || "—"}
               </Typography>
             </Box>
+            <Avatar
+              sx={{
+                width: 32,
+                height: 32,
+                fontSize: 14,
+                fontWeight: 700,
+                bgcolor: "rgba(255,255,255,0.18)",
+                color: "white",
+              }}
+            >
+              {getInitials(user?.name)}
+            </Avatar>
             <Tooltip title="Se déconnecter">
               <IconButton
                 color="inherit"

@@ -8,6 +8,7 @@ import {
   InputAdornment,
   Paper,
   Snackbar,
+  Stack,
   Table,
   TableBody,
   TableCell,
@@ -29,14 +30,56 @@ const TYPE_META = {
   transfer: { label: "Virement", color: "primary" },
 };
 
+const FILTERS = [
+  { value: "all", label: "Toutes" },
+  { value: "deposit", label: "Dépôts" },
+  { value: "withdrawal", label: "Retraits" },
+  { value: "transfer", label: "Virements" },
+];
+
 function amountSign(type) {
   return type === "deposit" ? "+" : "−";
 }
+
+// Génère un CSV côté client (même format que le serveur : ; et virgules)
+const frNumber = (n) => {
+  const whole = Math.trunc(n);
+  const frac = Math.round(Math.abs(n - whole) * 1000);
+  let fracStr = String(frac).padStart(3, "0").replace(/0$/, "");
+  return `${whole},${fracStr}`;
+};
+
+const toCSV = (list) => {
+  const header = "Date;Type;Description;Montant;Solde après";
+  const rows = list.map((t) =>
+    [
+      new Date(t.date).toISOString(),
+      `"${TYPE_META[t.type]?.label || t.type}"`,
+      `"${(t.description || "").replace(/"/g, '""')}"`,
+      frNumber(t.amount),
+      frNumber(t.balanceAfter),
+    ].join(";")
+  );
+  return [header, ...rows].join("\n");
+};
+
+const downloadBlob = (content, filename, type) => {
+  const blob = new Blob([content], { type });
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.setAttribute("download", filename);
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(url);
+};
 
 export default function Transactions() {
   const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState("all");
   const [exporting, setExporting] = useState(false);
   const [toast, setToast] = useState({ open: false, message: "", severity: "success" });
 
@@ -62,31 +105,33 @@ export default function Transactions() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return transactions;
-    return transactions.filter(
-      (t) =>
+    return transactions.filter((t) => {
+      if (filter !== "all" && t.type !== filter) return false;
+      if (!q) return true;
+      return (
         (t.description || "").toLowerCase().includes(q) ||
         (TYPE_META[t.type]?.label || "").toLowerCase().includes(q) ||
         t.type.toLowerCase().includes(q)
-    );
-  }, [transactions, search]);
+      );
+    });
+  }, [transactions, search, filter]);
 
   const closeToast = () => setToast((prev) => ({ ...prev, open: false }));
 
   const handleExport = async () => {
     setExporting(true);
     try {
-      const response = await api.get("/account/transactions/export", {
-        responseType: "blob",
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement("a");
-      link.href = url;
-      link.setAttribute("download", "transactions.csv");
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
+      const hasLocalFilter = filter !== "all" || search.trim() !== "";
+      if (hasLocalFilter) {
+        // Un filtre est actif : on exporte les lignes affichées (côté client)
+        downloadBlob(toCSV(filtered), "transactions.csv", "text/csv;charset=utf-8");
+      } else {
+        // Sinon : export complet via le serveur
+        const response = await api.get("/account/transactions/export", {
+          responseType: "blob",
+        });
+        downloadBlob(response.data, "transactions.csv", "text/csv;charset=utf-8");
+      }
       setToast({ open: true, message: "CSV exporté avec succès", severity: "success" });
     } catch (err) {
       setToast({
@@ -143,12 +188,30 @@ export default function Transactions() {
             )
           }
           onClick={handleExport}
-          disabled={exporting || transactions.length === 0}
+          disabled={exporting || filtered.length === 0}
           sx={{ transition: "transform 0.2s ease", "&:hover:not(:disabled)": { transform: "translateY(-2px)" } }}
         >
           Exporter CSV
         </Button>
       </Box>
+
+      {/* Filtres par type */}
+      <Stack direction="row" spacing={1} sx={{ mb: 2, flexWrap: "wrap", gap: 1 }}>
+        {FILTERS.map((f) => (
+          <Chip
+            key={f.value}
+            label={f.label}
+            clickable
+            color={filter === f.value ? "primary" : "default"}
+            onClick={() => setFilter(f.value)}
+            sx={{
+              fontWeight: 600,
+              "&:hover": { transform: "translateY(-1px)" },
+              transition: "transform 0.15s ease",
+            }}
+          />
+        ))}
+      </Stack>
 
       <Paper
         elevation={0}
