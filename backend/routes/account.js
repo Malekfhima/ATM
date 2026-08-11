@@ -18,7 +18,7 @@ router.get("/balance", accountController.getBalance);
 // @access  Private
 router.post(
   "/deposit",
-  [check("amount", "Please enter a valid amount").isFloat({ min: 0.01 })],
+  [check("amount", "Veuillez saisir un montant valide").isFloat({ min: 0.001 })],
   accountController.deposit
 );
 
@@ -27,7 +27,7 @@ router.post(
 // @access  Private
 router.post(
   "/withdraw",
-  [check("amount", "Please enter a valid amount").isFloat({ min: 0.01 })],
+  [check("amount", "Veuillez saisir un montant valide").isFloat({ min: 0.001 })],
   accountController.withdraw
 );
 
@@ -37,10 +37,10 @@ router.post(
 router.post(
   "/transfer",
   [
-    check("amount", "Please enter a valid amount").isFloat({ min: 0.01 }),
+    check("amount", "Veuillez saisir un montant valide").isFloat({ min: 0.001 }),
     check(
       "recipientAccountNumber",
-      "Recipient account number is required"
+      "Le numéro de compte du bénéficiaire est requis"
     ).notEmpty(),
   ],
   accountController.transfer
@@ -50,5 +50,10 @@ router.post(
 // @desc    Get transaction history
 // @access  Private
 router.get("/transactions", accountController.getTransactions);
+
+// @route   GET /api/account/transactions/export
+// @desc    Export transaction history as CSV
+// @access  Private
+router.get("/transactions/export", accountController.exportTransactions);
 
 module.exports = router;

@@ -53,45 +53,12 @@ const accountSchema = new mongoose.Schema({
   }
 });
 
-// Corrigez le middleware de validation
-accountSchema.pre('save', function(next) {
+// Vérifie que le solde reste positif (Mongoose 9 : hooks promisifiés)
+accountSchema.pre('save', async function() {
   if (this.balance < 0) {
-    const err = new Error('Le solde ne peut pas être négatif');
-    return next(err);
+    throw new Error('Le solde ne peut pas être négatif');
   }
-  next();
 });
-
-// Méthode pour ajouter une transaction
-accountSchema.methods.addTransaction = async function(transactionData) {
-  const session = await mongoose.startSession();
-  session.startTransaction();
-  
-  try {
-    // Mettre à jour le solde
-    if (transactionData.type === 'deposit') {
-      this.balance += transactionData.amount;
-    } else if (transactionData.type === 'withdrawal' || transactionData.type === 'transfer') {
-      if (this.balance < transactionData.amount) {
-        throw new Error('Fonds insuffisants');
-      }
-      this.balance -= transactionData.amount;
-    }
-
-    // Ajouter la transaction
-    transactionData.balanceAfter = this.balance;
-    this.transactions.push(transactionData);
-    
-    await this.save({ session });
-    await session.commitTransaction();
-    return this;
-  } catch (error) {
-    await session.abortTransaction();
-    throw error;
-  } finally {
-    session.endSession();
-  }
-};
 
 const Account = mongoose.model('Account', accountSchema);
 

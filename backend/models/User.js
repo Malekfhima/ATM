@@ -18,23 +18,21 @@ const userSchema = new mongoose.Schema({
     type: String,
     required: true
   },
+  account: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Account'
+  },
   createdAt: {
     type: Date,
     default: Date.now
   }
 });
 
-// Hacher le mot de passe avant de sauvegarder
-userSchema.pre('save', async function(next) {
-  if (!this.isModified('password')) return next();
-  
-  try {
-    const salt = await bcrypt.genSalt(10);
-    this.password = await bcrypt.hash(this.password, salt);
-    next();
-  } catch (error) {
-    next(error);
-  }
+// Hacher le mot de passe avant de sauvegarder (Mongoose 9 : hooks promisifiés)
+userSchema.pre('save', async function() {
+  if (!this.isModified('password')) return;
+  const salt = await bcrypt.genSalt(10);
+  this.password = await bcrypt.hash(this.password, salt);
 });
 
 // Méthode pour vérifier le mot de passe

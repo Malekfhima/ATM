@@ -11,11 +11,11 @@ const router = express.Router();
 router.post(
   "/register",
   [
-    check("name", "Name is required").not().isEmpty(),
-    check("email", "Please include a valid email").isEmail(),
+    check("name", "Le nom est requis").not().isEmpty(),
+    check("email", "Veuillez saisir un e-mail valide").isEmail(),
     check(
       "password",
-      "Please enter a password with 6 or more characters"
+      "Veuillez saisir un mot de passe d'au moins 6 caractères"
     ).isLength({ min: 6 }),
   ],
   authController.register
@@ -27,8 +27,8 @@ router.post(
 router.post(
   "/login",
   [
-    check("email", "Please include a valid email").isEmail(),
-    check("password", "Password is required").exists(),
+    check("email", "Veuillez saisir un e-mail valide").isEmail(),
+    check("password", "Le mot de passe est requis").exists(),
   ],
   authController.login
 );

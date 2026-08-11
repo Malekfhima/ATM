@@ -23,23 +23,21 @@ exports.protect = async (req, res, next) => {
       // Get user from the token
       req.user = await User.findById(decoded.id).select("-password");
 
-      next();
+      // L'utilisateur a peut-être été supprimé après l'émission du jeton
+      if (!req.user) {
+        return res
+          .status(401)
+          .json({ message: "Non autorisé, utilisateur introuvable" });
+      }
+
+      return next();
     } catch (error) {
       console.error(error);
-      res.status(401).json({ message: "Not authorized, token failed" });
+      return res
+        .status(401)
+        .json({ message: "Non autorisé, jeton invalide" });
     }
   }
 
-  if (!token) {
-    res.status(401).json({ message: "Not authorized, no token" });
-  }
-};
-
-// Middleware to check if user is admin
-exports.admin = (req, res, next) => {
-  if (req.user && req.user.isAdmin) {
-    next();
-  } else {
-    res.status(403).json({ message: "Not authorized as an admin" });
-  }
+  return res.status(401).json({ message: "Non autorisé, jeton manquant" });
 };

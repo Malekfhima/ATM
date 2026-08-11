@@ -1,3 +1,4 @@
+const mongoose = require("mongoose");
 const User = require("../models/User");
 const Account = require("../models/Account");
 const jwt = require("jsonwebtoken");
@@ -25,27 +26,35 @@ exports.register = async (req, res) => {
     // Check if user already exists
     let user = await User.findOne({ email });
     if (user) {
-      return res.status(400).json({ message: "User already exists" });
+      return res
+        .status(400)
+        .json({ message: "Un compte avec cet e-mail existe déjà" });
     }
 
-    // Create user
-    user = new User({
-      name,
-      email,
-      password,
-    });
+    // Create user and their account inside a transaction so that a failure
+    // cannot leave an orphaned account behind.
+    const session = await mongoose.startSession();
+    session.startTransaction();
 
-    // Create account for the user
-    const account = new Account({
-      user: user._id,
-      balance: 0,
-    });
+    let account;
+    try {
+      user = new User({ name, email, password });
+      await user.save({ session });
 
-    await account.save();
+      account = new Account({ user: user._id, balance: 0 });
+      await account.save({ session });
 
-    // Link account to user
-    user.account = account._id;
-    await user.save();
+      // Link account to user
+      user.account = account._id;
+      await user.save({ session });
+
+      await session.commitTransaction();
+      session.endSession();
+    } catch (error) {
+      await session.abortTransaction();
+      session.endSession();
+      throw error;
+    }
 
     // Generate token
     const token = generateToken(user._id);
@@ -59,7 +68,7 @@ exports.register = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
@@ -67,19 +76,24 @@ exports.register = async (req, res) => {
 // @route   POST /api/auth/login
 // @access  Public
 exports.login = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
   const { email, password } = req.body;
 
   try {
     // Check for user
     const user = await User.findOne({ email }).populate("account");
     if (!user) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Identifiants invalides" });
     }
 
     // Check password
     const isMatch = await user.comparePassword(password);
     if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
+      return res.status(401).json({ message: "Identifiants invalides" });
     }
 
     // Generate token
@@ -94,7 +108,7 @@ exports.login = async (req, res) => {
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
 
@@ -109,6 +123,6 @@ exports.getMe = async (req, res) => {
     res.json(user);
   } catch (error) {
     console.error(error);
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: "Erreur serveur" });
   }
 };
